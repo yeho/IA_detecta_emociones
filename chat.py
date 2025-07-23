@@ -1,10 +1,6 @@
 import streamlit as st
 import random
 import torch
-from gtts import gTTS
-from io import BytesIO
-from pydub import AudioSegment
-import tempfile
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # -------------------------
@@ -54,29 +50,19 @@ def responder_emocionalmente(emocion):
     return random.choice(respuestas_emocionales.get(emocion, respuestas_emocionales["neutral"]))
 
 # -------------------------
-# AUDIO: TEXTO A VOZ
-# -------------------------
-
-def reproducir_audio(texto):
-    tts = gTTS(text=texto, lang='es')
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-        tts.save(tmp.name)
-        audio = AudioSegment.from_file(tmp.name, format="mp3")
-        audio.export("respuesta.wav", format="wav")
-        st.audio("respuesta.wav", format='audio/wav')
-
-# -------------------------
 # INTERFAZ STREAMLIT
 # -------------------------
 
 st.set_page_config(page_title="Agente Emocional", page_icon="🧠")
 st.title("🧠 Agente Emocional en Español")
-st.markdown("Este agente detecta emociones en tus mensajes y responde con empatía.")
+st.markdown(
+    "Este agente detecta emociones en tus mensajes y responde con empatía. "
+    "Las emociones que puede identificar son: **alegría**, **tristeza**, **enojo**, "
+    "**miedo**, **asco**, **sorpresa** y **neutral**."
+)
 
 if "historial" not in st.session_state:
     st.session_state.historial = []
-
-modo_respuesta = st.radio("Modo de respuesta:", ["Texto", "Bocina (audio)"], horizontal=True)
 
 if st.button("🔄 Reiniciar sesión"):
     st.session_state.historial = []
@@ -101,10 +87,7 @@ if procesar and texto_usuario:
     })
 
     st.markdown(f"**Emoción detectada:** `{emocion}`")
-    if modo_respuesta == "Texto":
-        st.markdown(f"**Agente:** {respuesta}")
-    else:
-        reproducir_audio(respuesta)
+    st.markdown(f"**Agente:** {respuesta}")
 
 # -------------------------
 # HISTORIAL
