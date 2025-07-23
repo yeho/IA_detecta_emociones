@@ -10,12 +10,20 @@ import tempfile
 # -------- CARGAR MODELO --------
 @st.cache_resource
 def cargar_modelo_emociones_es():
-    modelo = T5ForConditionalGeneration.from_pretrained("mrm8488/t5-base-finetuned-emotion-spanish")
-    tokenizer = T5Tokenizer.from_pretrained("mrm8488/t5-base-finetuned-emotion-spanish")
+    modelo = AutoModelForSequenceClassification.from_pretrained("pysentimiento/robertuito-emotion")
+    tokenizer = AutoTokenizer.from_pretrained("pysentimiento/robertuito-emotion")
     return modelo, tokenizer
 
 modelo_emociones, tokenizer_emociones = cargar_modelo_emociones_es()
 
+def detectar_emocion_espanol(texto):
+    inputs = tokenizer_emociones(texto, return_tensors="pt", truncation=True)
+    with torch.no_grad():
+        logits = modelo_emociones(**inputs).logits
+    pred_id = torch.argmax(logits, dim=1).item()
+    etiquetas = modelo_emociones.config.id2label
+    emocion = etiquetas[pred_id]
+    return emocion.lower()
 # -------- RESPUESTAS --------
 respuestas_emocionales = {
     "alegría": ["¡Qué bueno escuchar eso! 😊", "¡Me alegra mucho! Cuéntame más.", "¡Tu energía positiva se siente desde aquí!"],
@@ -24,7 +32,9 @@ respuestas_emocionales = {
     "asco": ["Uf, entiendo por qué eso te causa rechazo.", "A veces hay cosas que simplemente nos repelen.", "Si quieres sacarlo de tu sistema, aquí estoy."],
     "miedo": ["Parece que eso te inquieta. ¿Qué te preocupa?", "No estás solo. Estoy aquí para escucharte.", "El miedo se reduce al compartirlo. Puedes contar conmigo."],
     "sorpresa": ["¡Qué sorpresa! 😮 ¿Qué pasó?", "¡Eso sí que no lo veía venir!", "Wow, eso suena inesperado."],
-    "desconocido": ["No estoy seguro de cómo te sientes, pero te escucho.", "A veces los sentimientos son confusos, y está bien.", "Aquí estoy si necesitas hablar o pensar en voz alta."]
+    "desconocido": ["No estoy seguro de cómo te sientes, pero te escucho.", "A veces los sentimientos son confusos, y está bien.", "Aquí estoy si necesitas hablar o pensar en voz alta."],
+    "neutral": ["Estoy aquí si quieres platicar de cualquier cosa.","A veces lo normal también tiene valor.","¿Cómo te fue hoy?"],
+    "amor": ["¡Qué bonito es el cariño! ❤️", "Se nota tu calidez. Me alegra.", "Qué lindo que lo compartas."]
 }
 
 # -------- DETECTAR EMOCIÓN --------
