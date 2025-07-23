@@ -1,9 +1,10 @@
 import streamlit as st
 import random
+import torch
 import speech_recognition as sr
 from gtts import gTTS
 from io import BytesIO
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pydub import AudioSegment
 import tempfile
 
