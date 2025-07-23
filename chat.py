@@ -1,14 +1,16 @@
 import streamlit as st
 import random
 import torch
-import speech_recognition as sr
 from gtts import gTTS
 from io import BytesIO
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pydub import AudioSegment
 import tempfile
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# -------- CARGAR MODELO --------
+# -------------------------
+# CARGA DEL MODELO
+# -------------------------
+
 @st.cache_resource
 def cargar_modelo_emociones_es():
     modelo = AutoModelForSequenceClassification.from_pretrained(
@@ -21,94 +23,73 @@ def cargar_modelo_emociones_es():
 
 modelo_emociones, tokenizer_emociones = cargar_modelo_emociones_es()
 
+# -------------------------
+# DETECCIÓN DE EMOCIÓN
+# -------------------------
+
 def detectar_emocion_espanol(texto):
     inputs = tokenizer_emociones(texto, return_tensors="pt", truncation=True)
     with torch.no_grad():
         logits = modelo_emociones(**inputs).logits
     pred_id = torch.argmax(logits, dim=1).item()
-    etiqueta = modelo_emociones.config.id2label[pred_id]
-    return etiqueta.lower()
-# -------- RESPUESTAS --------
+    etiquetas = modelo_emociones.config.id2label
+    emocion = etiquetas[pred_id]
+    return emocion.lower()
+
+# -------------------------
+# RESPUESTAS EMOCIONALES
+# -------------------------
+
 respuestas_emocionales = {
     "joy": ["¡Qué bueno escuchar eso! 😊", "¡Me alegra mucho! Cuéntame más.", "¡Tu energía positiva se siente desde aquí!"],
     "sadness": ["Lo siento mucho... ¿quieres hablar de ello? 😔", "Estoy aquí para ti. A veces compartir ayuda.", "No estás solo. Si te puedo apoyar, dime cómo."],
     "anger": ["Vaya, eso suena molesto. ¿Qué pasó?", "Tu enojo es válido. ¿Quieres desahogarte?", "Respirar profundo ayuda, pero también expresarlo. Estoy contigo."],
-    "disgust": ["Uf, entiendo por qué eso te causa rechazo.", "A veces hay cosas que simplemente nos repelen.", "Si quieres sacarlo de tu sistema, aquí estoy."],
     "fear": ["Parece que eso te inquieta. ¿Qué te preocupa?", "No estás solo. Estoy aquí para escucharte.", "El miedo se reduce al compartirlo. Puedes contar conmigo."],
+    "disgust": ["Uf, entiendo por qué eso te causa rechazo.", "A veces hay cosas que simplemente nos repelen.", "Si quieres sacarlo de tu sistema, aquí estoy."],
     "surprise": ["¡Qué sorpresa! 😮 ¿Qué pasó?", "¡Eso sí que no lo veía venir!", "Wow, eso suena inesperado."],
-    "neutral": ["Estoy aquí si quieres platicar de cualquier cosa.","A veces lo normal también tiene valor.","¿Cómo te fue hoy?"]
-   }
+    "neutral": ["Estoy aquí si quieres platicar de cualquier cosa.", "A veces lo normal también tiene valor.", "¿Cómo te fue hoy?"]
+}
 
-# -------- DETECTAR EMOCIÓN --------
-def detectar_emocion_espanol(texto):
-    entrada = "emocion: " + texto
-    inputs = tokenizer_emociones.encode(entrada, return_tensors="pt", max_length=512, truncation=True)
-    output = modelo_emociones.generate(inputs, max_length=8)
-    emocion = tokenizer_emociones.decode(output[0], skip_special_tokens=True)
-    return emocion if emocion in respuestas_emocionales else "desconocido"
-
-# -------- RESPUESTA EMOCIONAL --------
 def responder_emocionalmente(emocion):
-    return random.choice(respuestas_emocionales.get(emocion, respuestas_emocionales["desconocido"]))
+    return random.choice(respuestas_emocionales.get(emocion, respuestas_emocionales["neutral"]))
 
-# -------- RECONOCIMIENTO DE VOZ --------
-def transcribir_audio():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("🎙️ Escuchando... habla ahora.")
-        audio = recognizer.listen(source, timeout=5)
-    try:
-        texto = recognizer.recognize_google(audio, language="es-MX")
-        st.success(f"🗣️ Dijiste: {texto}")
-        return texto
-    except sr.UnknownValueError:
-        st.error("No pude entender el audio.")
-        return None
-    except sr.RequestError:
-        st.error("Error de conexión con el servicio de reconocimiento.")
-        return None
+# -------------------------
+# AUDIO: TEXTO A VOZ
+# -------------------------
 
-# -------- TEXTO A VOZ --------
 def reproducir_audio(texto):
     tts = gTTS(text=texto, lang='es')
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
         tts.save(tmp.name)
         audio = AudioSegment.from_file(tmp.name, format="mp3")
         audio.export("respuesta.wav", format="wav")
-        audio_file = open("respuesta.wav", "rb")
-        st.audio(audio_file.read(), format='audio/wav')
+        st.audio("respuesta.wav", format='audio/wav')
 
-# -------- INICIALIZAR SESIÓN --------
+# -------------------------
+# INTERFAZ STREAMLIT
+# -------------------------
+
+st.set_page_config(page_title="Agente Emocional", page_icon="🧠")
+st.title("🧠 Agente Emocional en Español")
+st.markdown("Este agente detecta emociones en tus mensajes y responde con empatía.")
+
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
-# -------- INTERFAZ --------
-st.set_page_config(page_title="Agente Emocional con Voz", page_icon="🧠")
-st.title("🧠 Agente Emocional con Entrada de Voz o Texto")
-st.markdown("Este agente detecta tu emoción en español y responde por texto o con voz.")
+modo_respuesta = st.radio("Modo de respuesta:", ["Texto", "Bocina (audio)"], horizontal=True)
 
-# Entradas del usuario
-modo_entrada = st.radio("Modo de entrada:", ["Texto", "Micrófono"], horizontal=True)
-modo_respuesta = st.radio("Modo de respuesta:", ["Texto", "Bocina"], horizontal=True)
-
-# Reiniciar
 if st.button("🔄 Reiniciar sesión"):
     st.session_state.historial = []
     st.success("Sesión emocional reiniciada.")
 
-# Obtener entrada
-texto_usuario = ""
-if modo_entrada == "Texto":
-    texto_usuario = st.text_input("Escribe tu mensaje aquí:")
-    procesar = st.button("Enviar")
-else:
-    if st.button("🎙️ Grabar y procesar voz"):
-        texto_usuario = transcribir_audio()
-        procesar = True
-    else:
-        procesar = False
+# Entrada por texto
+texto_usuario = st.text_input("Escribe tu mensaje aquí:")
+procesar = st.button("Enviar")
 
-# Procesar entrada
+# -------------------------
+# PROCESAR MENSAJE
+# -------------------------
+
 if procesar and texto_usuario:
     emocion = detectar_emocion_espanol(texto_usuario)
     respuesta = responder_emocionalmente(emocion)
@@ -119,12 +100,16 @@ if procesar and texto_usuario:
         "respuesta": respuesta
     })
 
+    st.markdown(f"**Emoción detectada:** `{emocion}`")
     if modo_respuesta == "Texto":
-        st.markdown(f"**Agente ({emocion}):** {respuesta}")
+        st.markdown(f"**Agente:** {respuesta}")
     else:
         reproducir_audio(respuesta)
 
-# Mostrar historial
+# -------------------------
+# HISTORIAL
+# -------------------------
+
 if st.session_state.historial:
     st.markdown("### 🗂️ Historial de esta sesión:")
     for entrada in reversed(st.session_state.historial):
