@@ -11,8 +11,12 @@ import tempfile
 # -------- CARGAR MODELO --------
 @st.cache_resource
 def cargar_modelo_emociones_es():
-    modelo = AutoModelForSequenceClassification.from_pretrained("pysentimiento/robertuito-emotion")
-    tokenizer = AutoTokenizer.from_pretrained("pysentimiento/robertuito-emotion")
+    modelo = AutoModelForSequenceClassification.from_pretrained(
+        "pysentimiento/robertuito-emotion-analysis"
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        "pysentimiento/robertuito-emotion-analysis"
+    )
     return modelo, tokenizer
 
 modelo_emociones, tokenizer_emociones = cargar_modelo_emociones_es()
@@ -22,21 +26,18 @@ def detectar_emocion_espanol(texto):
     with torch.no_grad():
         logits = modelo_emociones(**inputs).logits
     pred_id = torch.argmax(logits, dim=1).item()
-    etiquetas = modelo_emociones.config.id2label
-    emocion = etiquetas[pred_id]
-    return emocion.lower()
+    etiqueta = modelo_emociones.config.id2label[pred_id]
+    return etiqueta.lower()
 # -------- RESPUESTAS --------
 respuestas_emocionales = {
-    "alegría": ["¡Qué bueno escuchar eso! 😊", "¡Me alegra mucho! Cuéntame más.", "¡Tu energía positiva se siente desde aquí!"],
-    "tristeza": ["Lo siento mucho... ¿quieres hablar de ello? 😔", "Estoy aquí para ti. A veces compartir ayuda.", "No estás solo. Si te puedo apoyar, dime cómo."],
-    "enojo": ["Vaya, eso suena molesto. ¿Qué pasó?", "Tu enojo es válido. ¿Quieres desahogarte?", "Respirar profundo ayuda, pero también expresarlo. Estoy contigo."],
-    "asco": ["Uf, entiendo por qué eso te causa rechazo.", "A veces hay cosas que simplemente nos repelen.", "Si quieres sacarlo de tu sistema, aquí estoy."],
-    "miedo": ["Parece que eso te inquieta. ¿Qué te preocupa?", "No estás solo. Estoy aquí para escucharte.", "El miedo se reduce al compartirlo. Puedes contar conmigo."],
-    "sorpresa": ["¡Qué sorpresa! 😮 ¿Qué pasó?", "¡Eso sí que no lo veía venir!", "Wow, eso suena inesperado."],
-    "desconocido": ["No estoy seguro de cómo te sientes, pero te escucho.", "A veces los sentimientos son confusos, y está bien.", "Aquí estoy si necesitas hablar o pensar en voz alta."],
-    "neutral": ["Estoy aquí si quieres platicar de cualquier cosa.","A veces lo normal también tiene valor.","¿Cómo te fue hoy?"],
-    "amor": ["¡Qué bonito es el cariño! ❤️", "Se nota tu calidez. Me alegra.", "Qué lindo que lo compartas."]
-}
+    "joy": ["¡Qué bueno escuchar eso! 😊", "¡Me alegra mucho! Cuéntame más.", "¡Tu energía positiva se siente desde aquí!"],
+    "sadness": ["Lo siento mucho... ¿quieres hablar de ello? 😔", "Estoy aquí para ti. A veces compartir ayuda.", "No estás solo. Si te puedo apoyar, dime cómo."],
+    "anger": ["Vaya, eso suena molesto. ¿Qué pasó?", "Tu enojo es válido. ¿Quieres desahogarte?", "Respirar profundo ayuda, pero también expresarlo. Estoy contigo."],
+    "disgust": ["Uf, entiendo por qué eso te causa rechazo.", "A veces hay cosas que simplemente nos repelen.", "Si quieres sacarlo de tu sistema, aquí estoy."],
+    "fear": ["Parece que eso te inquieta. ¿Qué te preocupa?", "No estás solo. Estoy aquí para escucharte.", "El miedo se reduce al compartirlo. Puedes contar conmigo."],
+    "surprise": ["¡Qué sorpresa! 😮 ¿Qué pasó?", "¡Eso sí que no lo veía venir!", "Wow, eso suena inesperado."],
+    "neutral": ["Estoy aquí si quieres platicar de cualquier cosa.","A veces lo normal también tiene valor.","¿Cómo te fue hoy?"]
+   }
 
 # -------- DETECTAR EMOCIÓN --------
 def detectar_emocion_espanol(texto):
